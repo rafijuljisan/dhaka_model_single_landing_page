@@ -1,0 +1,17 @@
+# ============================================================
+# uploads/.htaccess — Secure Uploads Directory
+# ============================================================
+
+# 1. Prevent attackers from viewing a list of uploaded files
+Options -Indexes
+
+# 2. Block all script execution (Case-insensitive via "?i")
+# Note: "php[0-9]?" automatically catches php, php3, php4, php5, php7, php8
+<FilesMatch "(?i)\.(php[0-9]?|phtml|phar|inc|pl|py|jsp|asp|sh|cgi)$">
+    Require all denied
+</FilesMatch>
+
+# 3. Explicitly disable the PHP engine for this folder
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
