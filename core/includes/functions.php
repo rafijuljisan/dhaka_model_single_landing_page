@@ -343,7 +343,92 @@ function verify_csrf(string $token): bool {
     if (session_status() === PHP_SESSION_NONE) session_start();
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
-
+// ============================================================
+// APPEND THIS BLOCK to the bottom of:
+//   core/includes/functions.php
+//
+// These are NEW helpers used by the new admin pages.
+// They do NOT replace any existing function.
+// ============================================================
+ 
+// ── Time ago display ─────────────────────────────────────────
+// Used in activity timeline to show "2h ago" style timestamps.
+ 
+if (!function_exists('time_ago')) {
+    function time_ago(string $datetime): string {
+        $diff = time() - strtotime($datetime);
+        if ($diff < 60)     return 'just now';
+        if ($diff < 3600)   return floor($diff / 60) . 'm ago';
+        if ($diff < 86400)  return floor($diff / 3600) . 'h ago';
+        if ($diff < 604800) return floor($diff / 86400) . 'd ago';
+        return date('d M Y', strtotime($datetime));
+    }
+}
+ 
+// ── Age from DOB ─────────────────────────────────────────────
+// Alias so new admin pages can call age_from_dob() while the
+// public submit.php continues using calculate_age().
+ 
+if (!function_exists('age_from_dob')) {
+    function age_from_dob(string $dob): int {
+        return calculate_age($dob); // delegates to existing function
+    }
+}
+ 
+// ── Flash messages ────────────────────────────────────────────
+// One-time session messages passed across redirects.
+ 
+if (!function_exists('flash_set')) {
+    function flash_set(string $type, string $msg): void {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $_SESSION['flash'] = compact('type', 'msg');
+    }
+}
+ 
+if (!function_exists('flash_get')) {
+    function flash_get(): ?array {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $flash = $_SESSION['flash'] ?? null;
+        unset($_SESSION['flash']);
+        return $flash;
+    }
+}
+ 
+// ── BD phone normaliser alias ─────────────────────────────────
+// New admin files call normalise_phone(); existing code uses
+// sanitize_phone(). This alias bridges the gap.
+ 
+if (!function_exists('normalise_phone')) {
+    function normalise_phone(string $phone): string {
+        return sanitize_phone($phone); // delegates to existing function
+    }
+}
+ 
+// ── BD phone validator alias ──────────────────────────────────
+ 
+if (!function_exists('is_valid_bd_phone')) {
+    function is_valid_bd_phone(string $phone): bool {
+        return is_valid_phone(sanitize_phone($phone));
+    }
+}
+/*/
+// ── status_badge_class — NEW names used by new admin pages ────
+// ⚠️  The EXISTING function returns Bootstrap-style names
+//    (badge-success, badge-danger…).
+//    The NEW admin pages use status names directly as CSS classes
+//    (badge-approved, badge-rejected…) — those are handled via
+//    inline class="badge badge-<?= $status ?>" in HTML.
+//
+//    The audit log and sidebar in view.php still call
+//    status_badge_class() — which keeps returning the old names.
+//    Both old names and new names are defined in the new admin.css.
+//    So NO change needed here — existing function is fine as-is.
+ 
+// ── Paginate — ensure 'total_rows' key exists ────────────────
+// The existing paginate() returns 'total' but new dashboard.php
+// stores the count separately, so there is NO conflict.
+// Nothing to add here.
+*/
 // ── Redirect ─────────────────────────────────────────────────
 
 function redirect(string $url): never {

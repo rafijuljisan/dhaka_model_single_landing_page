@@ -6,37 +6,38 @@
 require_once __DIR__ . '/../../core/includes/auth.php';
 require_once __DIR__ . '/../../core/includes/functions.php';
 
-// Ensure user is logged in
-if (!is_logged_in()) {
-    redirect('/admin/index.php?msg=session_expired');
-}
+require_login();
 
 $admin = current_admin();
+$db    = db();
 
-// SECURITY Guard: Only Super Admins can access this page
-if ($admin['role'] !== 'superadmin') {
-    die("Unauthorized access. Super Admin privileges required.");
-}
+// Pagination
+$per_page     = 50;
+$current_page = max(1, (int)($_GET['page'] ?? 1));
+$offset       = ($current_page - 1) * $per_page;
 
-$db = db();
+// Count total
+$total_rows = (int)$db->query("SELECT COUNT(*) AS c FROM status_logs")->fetch_assoc()['c'];
+$total_pages = max(1, (int)ceil($total_rows / $per_page));
 
-// Fetch logs matching the EXACT schema provided
-$sql = "SELECT 
-            l.changed_at,
-            l.old_status,
-            l.new_status,
-            l.note,
-            u.username AS admin_username,
-            r.full_name AS applicant_name,
-            r.reg_code
-        FROM status_logs l
-        LEFT JOIN admin_users u ON l.changed_by = u.id
-        LEFT JOIN registrations r ON l.reg_id = r.id
-        ORDER BY l.changed_at DESC 
-        LIMIT 100"; 
-
-$result = $db->query($sql);
-$logs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+// Fetch logs
+$logs = $db->query("
+    SELECT
+        l.changed_at,
+        l.old_status,
+        l.new_status,
+        l.note,
+        u.username   AS admin_username,
+        u.full_name  AS admin_name,
+        r.full_name  AS applicant_name,
+        r.reg_code,
+        r.id         AS reg_id
+    FROM   status_logs l
+    LEFT JOIN admin_users   u ON l.changed_by = u.id
+    LEFT JOIN registrations r ON l.reg_id     = r.id
+    ORDER BY l.changed_at DESC
+    LIMIT $per_page OFFSET $offset
+")->fetch_all(MYSQLI_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,175 +45,213 @@ $logs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Activity History – DMA Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-    :root {
-        --primary-red: #cc0000;
-        --bg-light: #f9f9fa;
-        --text-dark: #222222;
-        --text-muted: #666666;
-        --border: #e5e7eb;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
-        background: var(--bg-light); 
-        font-family: 'Montserrat', sans-serif; 
-        color: var(--text-dark); 
-    }
-    .container {
-        max-width: 1200px;
-        margin: 40px auto;
-        padding: 0 20px;
-    }
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 30px;
-    }
-    .page-title {
-        font-family: 'Playfair Display', serif;
-        font-size: 2rem;
-        color: var(--primary-red);
-    }
-    .card {
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        overflow: hidden;
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-    th {
-        background: #fdfdfd;
-        padding: 16px 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        border-bottom: 2px solid var(--border);
-    }
-    td {
-        padding: 16px 20px;
-        font-size: 0.95rem;
-        border-bottom: 1px solid var(--border);
-        vertical-align: middle;
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover { background: #fafafa; }
-    
-    .badge {
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: capitalize;
-    }
-    .badge-admin { background: #f3f4f6; color: #4b5563; }
-    
-    /* Dynamic status badges */
-    .badge-approved { background: #dcfce7; color: #166534; }
-    .badge-rejected { background: #fee2e2; color: #991b1b; }
-    .badge-pending  { background: #f3f4f6; color: #4b5563; }
-    .badge-reviewed { background: #dbeafe; color: #1e3a8a; }
-    .badge-waitlist { background: #fef9c3; color: #854d0e; }
-    
-    .status-flow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .status-arrow {
-        color: #9ca3af;
-        font-size: 0.8rem;
-    }
-    .admin-note {
-        display: block;
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        margin-top: 6px;
-        font-style: italic;
-    }
-    
-    .empty-state {
-        padding: 60px 20px;
-        text-align: center;
-        color: var(--text-muted);
-    }
-</style>
+<link rel="stylesheet" href="/assets/admin.css">
 </head>
 <body>
 
-<?php include __DIR__ . '/../../core/admin_partials/navbar.php'; ?>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-<div class="container">
-    <div class="page-header">
-        <h1 class="page-title">Activity History</h1>
+<div class="admin-layout">
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">📋</div>
+    <div>
+      <div class="sidebar-logo-text">DMA Admin</div>
+      <div class="sidebar-logo-sub">Activity History</div>
     </div>
+  </div>
+  <div class="sidebar-section">
+    <ul class="sidebar-nav">
+      <li><a href="/admin/dashboard.php"><span class="nav-icon">←</span> Dashboard</a></li>
+      <li><a href="/admin/history.php" class="active"><span class="nav-icon">🕓</span> History</a></li>
+      <?php if ($admin['role'] === 'superadmin'): ?>
+      <li><a href="/admin/users.php"><span class="nav-icon">👥</span> Users</a></li>
+      <li><a href="/admin/settings.php"><span class="nav-icon">⚙️</span> Settings</a></li>
+      <?php endif; ?>
+    </ul>
+  </div>
+  <div class="sidebar-footer">
+    <a href="/admin/logout.php" class="sidebar-user">
+      <div class="sidebar-avatar"><?= strtoupper(substr($admin['full_name'], 0, 1)) ?></div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name"><?= clean($admin['full_name']) ?></div>
+        <div class="sidebar-user-role"><?= $admin['role'] ?> · Log out</div>
+      </div>
+    </a>
+  </div>
+</aside>
 
-    <div class="card">
+<!-- ── Main ── -->
+<div class="main-wrap">
+
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="openSidebar()">☰</button>
+    <div class="topbar-breadcrumb">
+      <a href="/admin/dashboard.php">Dashboard</a>
+      <span class="sep">/</span>
+      <span>Activity History</span>
+    </div>
+    <div class="topbar-actions">
+      <span style="font-size:0.8rem;color:var(--text-muted);">
+        <?= number_format($total_rows) ?> total entries
+      </span>
+    </div>
+  </div>
+
+  <div class="page-content">
+
+    <div class="table-wrap">
+
+      <div class="table-header">
+        <div class="card-title">🕓 Status Change Log</div>
+        <div class="table-meta">
+          Page <strong><?= $current_page ?></strong> of <strong><?= $total_pages ?></strong>
+        </div>
+      </div>
+
+      <!-- Desktop table -->
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Admin</th>
+            <th>Applicant</th>
+            <th>Status Change</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
         <?php if (empty($logs)): ?>
-            <div class="empty-state">
-                <p>No activity logs found.</p>
+          <tr><td colspan="5" class="no-data">No activity logs yet.</td></tr>
+        <?php else: foreach ($logs as $log): ?>
+          <tr>
+            <td>
+              <div style="font-size:0.85rem;font-weight:600;">
+                <?= date('d M Y', strtotime($log['changed_at'])) ?>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">
+                <?= date('h:i A', strtotime($log['changed_at'])) ?>
+              </div>
+            </td>
+            <td>
+              <div style="font-weight:600;font-size:0.875rem;">
+                <?= clean($log['admin_name'] ?? 'System') ?>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">
+                @<?= clean($log['admin_username'] ?? '—') ?>
+              </div>
+            </td>
+            <td>
+              <?php if ($log['reg_id']): ?>
+              <a href="/admin/view.php?id=<?= (int)$log['reg_id'] ?>"
+                 style="font-weight:700;color:var(--red);">
+                <?= clean($log['applicant_name'] ?? 'Unknown') ?>
+              </a>
+              <?php else: ?>
+              <span style="color:var(--text-muted);"><?= clean($log['applicant_name'] ?? 'Deleted') ?></span>
+              <?php endif; ?>
+              <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--mono);">
+                <?= clean($log['reg_code'] ?? '—') ?>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <?php if ($log['old_status']): ?>
+                <span class="badge badge-<?= clean($log['old_status']) ?>">
+                  <?= ucfirst(clean($log['old_status'])) ?>
+                </span>
+                <span style="color:var(--text-muted);">→</span>
+                <?php endif; ?>
+                <span class="badge badge-<?= clean($log['new_status']) ?>">
+                  <?= ucfirst(clean($log['new_status'])) ?>
+                </span>
+              </div>
+            </td>
+            <td style="font-size:0.85rem;color:var(--text-muted);max-width:220px;">
+              <?= $log['note'] ? nl2br(clean($log['note'])) : '—' ?>
+            </td>
+          </tr>
+        <?php endforeach; endif; ?>
+        </tbody>
+      </table>
+
+      <!-- Mobile cards -->
+      <div style="display:none;" class="history-mobile-list">
+        <?php foreach ($logs as $log): ?>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <?php if ($log['old_status']): ?>
+              <span class="badge badge-<?= clean($log['old_status']) ?>"><?= ucfirst(clean($log['old_status'])) ?></span>
+              <span style="color:var(--text-muted);">→</span>
+              <?php endif; ?>
+              <span class="badge badge-<?= clean($log['new_status']) ?>"><?= ucfirst(clean($log['new_status'])) ?></span>
             </div>
-        <?php else: ?>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date & Time</th>
-                        <th>Admin User</th>
-                        <th>Applicant</th>
-                        <th>Status Change & Notes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($logs as $log): ?>
-                    <tr>
-                        <td style="color: var(--text-muted); font-size: 0.85rem;">
-                            <?= date('M d, Y', strtotime($log['changed_at'])) ?><br>
-                            <?= date('h:i A', strtotime($log['changed_at'])) ?>
-                        </td>
-                        <td>
-                            <span class="badge badge-admin">
-                                @<?= htmlspecialchars($log['admin_username'] ?? 'System') ?>
-                            </span>
-                        </td>
-                        <td>
-                            <strong><?= htmlspecialchars($log['applicant_name'] ?? 'Unknown/Deleted') ?></strong><br>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">
-                                <?= htmlspecialchars($log['reg_code'] ?? 'N/A') ?>
-                            </span>
-                        </td>
-                        <td>
-                            <div class="status-flow">
-                                <?php if ($log['old_status']): ?>
-                                    <span class="badge badge-<?= strtolower($log['old_status']) ?>">
-                                        <?= htmlspecialchars($log['old_status']) ?>
-                                    </span>
-                                    <span class="status-arrow">→</span>
-                                <?php endif; ?>
-                                
-                                <span class="badge badge-<?= strtolower($log['new_status']) ?>">
-                                    <?= htmlspecialchars($log['new_status']) ?>
-                                </span>
-                            </div>
-                            
-                            <?php if (!empty($log['note'])): ?>
-                                <span class="admin-note">"<?= htmlspecialchars($log['note']) ?>"</span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php endif; ?>
+            <span style="font-size:0.75rem;color:var(--text-muted);">
+              <?= date('d M, h:i A', strtotime($log['changed_at'])) ?>
+            </span>
+          </div>
+          <?php if ($log['reg_id']): ?>
+          <a href="/admin/view.php?id=<?= (int)$log['reg_id'] ?>"
+             style="font-weight:700;font-size:0.9rem;color:var(--red);">
+            <?= clean($log['applicant_name'] ?? 'Unknown') ?>
+          </a>
+          <?php endif; ?>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">
+            by <?= clean($log['admin_name'] ?? 'System') ?>
+            <?= $log['note'] ? '· ' . clean(mb_substr($log['note'], 0, 60)) . (mb_strlen($log['note']) > 60 ? '…' : '') : '' ?>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+
+    </div><!-- /table-wrap -->
+
+    <!-- Pagination -->
+    <?php if ($total_pages > 1): ?>
+    <div class="pagination">
+      <?php if ($current_page > 1): ?>
+      <a href="?page=<?= $current_page - 1 ?>">&laquo;</a>
+      <?php endif; ?>
+      <?php
+      $start = max(1, $current_page - 2);
+      $end   = min($total_pages, $current_page + 2);
+      if ($start > 1) echo '<span>…</span>';
+      for ($p = $start; $p <= $end; $p++):
+      ?>
+      <a href="?page=<?= $p ?>" class="<?= $p === $current_page ? 'active' : '' ?>"><?= $p ?></a>
+      <?php endfor;
+      if ($end < $total_pages) echo '<span>…</span>';
+      ?>
+      <?php if ($current_page < $total_pages): ?>
+      <a href="?page=<?= $current_page + 1 ?>">&raquo;</a>
+      <?php endif; ?>
     </div>
-</div>
+    <?php endif; ?>
+
+  </div><!-- /page-content -->
+</div><!-- /main-wrap -->
+</div><!-- /admin-layout -->
+
+<style>
+@media (max-width: 768px) {
+  .data-table { display: none; }
+  .history-mobile-list { display: block !important; }
+}
+</style>
+
+<script>
+function openSidebar()  {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+</script>
 
 </body>
 </html>
