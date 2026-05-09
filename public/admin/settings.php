@@ -20,7 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $editable_keys = [
             'campaign_name', 'campaign_active', 'max_registrations',
-            'fb_pixel_id', 'contact_email', 'contact_phone', 'registration_note',
+            'fb_pixel_id', 'tiktok_pixel_id', 'tiktok_access_token',
+            'contact_email', 'contact_phone', 'registration_note',
         ];
 
         foreach ($editable_keys as $key) {
@@ -60,6 +61,8 @@ $settings = [
     'campaign_active'   => get_setting('campaign_active',   '1'),
     'max_registrations' => get_setting('max_registrations', '500'),
     'fb_pixel_id'       => get_setting('fb_pixel_id',       ''),
+    'tiktok_pixel_id'     => get_setting('tiktok_pixel_id', ''),
+    'tiktok_access_token' => get_setting('tiktok_access_token', ''),
     'contact_email'     => get_setting('contact_email',     ''),
     'contact_phone'     => get_setting('contact_phone',     ''),
     'registration_note' => get_setting('registration_note', ''),
@@ -252,6 +255,21 @@ $csrf = csrf_token();
                 <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">
                   Numeric ID only from your Events Manager. Leave blank to disable.
                 </div>
+              </div>
+              <div class="form-group">
+                <label>TikTok Pixel ID</label>
+                <input type="text" name="tiktok_pixel_id"
+                      value="<?= htmlspecialchars($settings['tiktok_pixel_id']) ?>"
+                      placeholder="e.g. CXXXXXXXXXXXXXXXXX">
+                <small>Numeric/alphanumeric ID from TikTok Events Manager.</small>
+              </div>
+
+              <div class="form-group">
+                <label>TikTok Access Token</label>
+                <input type="password" name="tiktok_access_token"
+                      value="<?= htmlspecialchars($settings['tiktok_access_token']) ?>"
+                      placeholder="From TikTok Events Manager → Server Events">
+                <small>Keep this secret — used for server-side event tracking.</small>
               </div>
 
               <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">

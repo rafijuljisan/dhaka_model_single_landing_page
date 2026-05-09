@@ -15,9 +15,11 @@ $reg_code    = htmlspecialchars($_SESSION['reg_code'], ENT_QUOTES, 'UTF-8');
 $applicant   = htmlspecialchars($_SESSION['applicant'], ENT_QUOTES, 'UTF-8');
 $fb_event_id = htmlspecialchars($_SESSION['fb_event_id'] ?? '', ENT_QUOTES, 'UTF-8'); // ADD THIS
 $pixel_id    = get_setting('fb_pixel_id', '');
+$tiktok_pixel_id = get_setting('tiktok_pixel_id', '');
+$tt_event_id     = htmlspecialchars($_SESSION['tt_event_id'] ?? '', ENT_QUOTES, 'UTF-8');
 
 // Consume session values
-unset($_SESSION['reg_code'], $_SESSION['applicant'], $_SESSION['fb_event_id']);
+unset($_SESSION['reg_code'], $_SESSION['applicant'], $_SESSION['fb_event_id'], $_SESSION['tt_event_id']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -196,6 +198,30 @@ unset($_SESSION['reg_code'], $_SESSION['applicant'], $_SESSION['fb_event_id']);
       <img height="1" width="1" style="display:none"
         src="https://www.facebook.com/tr?id=<?= $pixel_id ?>&ev=Lead&noscript=1"/>
     </noscript>
+    <?php endif; ?>
+    <?php if (!empty($tiktok_pixel_id)) : ?>
+    <script>
+    !function (w, d, t) {
+    w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
+    ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"];
+    ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};
+    for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
+    ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};
+    ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";
+    ttq._i=ttq._i||{};ttq._i[e]=[];ttq._i[e]._u=i;ttq._t=ttq._t||{};ttq._t[e]=+new Date;
+    ttq._o=ttq._o||{};ttq._o[e]=n||{};var o=document.createElement("script");
+    o.type="text/javascript";o.async=!0;o.src=i+"?sdkid="+e+"&lib="+t;
+    var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+    ttq.load('<?= $tiktok_pixel_id ?>');
+    ttq.page();
+
+    // ★ SUBMITFORM EVENT — fires on thank-you page only
+    ttq.track('SubmitForm', {
+        event_id: '<?= $tt_event_id ?>',   // ← dedup key, matches server-side
+        value:    0,
+        currency: 'BDT'
+    });
+    </script>
     <?php endif; ?>
 
 </head>

@@ -74,7 +74,9 @@ CREATE TABLE IF NOT EXISTS `lead_activities` (
 ALTER TABLE `registrations`
   ADD COLUMN IF NOT EXISTS `user_agent` TEXT NULL DEFAULT NULL
       COMMENT 'Browser user-agent captured at submission';
-
+INSERT IGNORE INTO campaign_settings (setting_key, setting_value) VALUES
+  ('tiktok_pixel_id',     ''),
+  ('tiktok_access_token', '');
 -- ── Done ─────────────────────────────────────────────────────
 SELECT CONCAT(
   'Migration complete. ',

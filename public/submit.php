@@ -106,6 +106,43 @@ curl_exec($ch);
 curl_close($ch);
 
 // ============================================================
+// TIKTOK EVENTS API (SERVER-SIDE TRACKING)
+// ============================================================
+$tiktok_pixel_id     = get_setting('tiktok_pixel_id', '');
+$tiktok_access_token = get_setting('tiktok_access_token', '');
+
+if (!empty($tiktok_pixel_id) && !empty($tiktok_access_token)) {
+    $tt_payload = json_encode([
+        'pixel_code' => $tiktok_pixel_id,
+        'event'      => 'SubmitForm',
+        'event_id'   => $event_id,   // ← same $event_id from line 65, reused for TikTok dedup
+        'timestamp'  => date('c'),
+        'context'    => [
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+            'ip'         => $_SERVER['REMOTE_ADDR'] ?? '',
+            'page'       => ['url' => 'https://' . $_SERVER['HTTP_HOST'] . '/thank-you.php'],
+        ],
+        'properties' => ['currency' => 'BDT', 'value' => 0],
+        'user'       => array_filter([
+            'phone_number' => !empty($clean_phone) ? hash('sha256', $clean_phone) : null,
+            'email'        => !empty($applicant_email) ? hash('sha256', strtolower(trim($applicant_email))) : null,
+        ]),
+    ]);
+
+    $tt_ch = curl_init('https://business-api.tiktok.com/open_api/v1.3/event/track/');
+    curl_setopt($tt_ch, CURLOPT_CUSTOMREQUEST, 'POST');
+    curl_setopt($tt_ch, CURLOPT_POSTFIELDS, $tt_payload);
+    curl_setopt($tt_ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($tt_ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Access-Token: ' . $tiktok_access_token,
+    ]);
+    curl_setopt($tt_ch, CURLOPT_TIMEOUT_MS, 1000);
+    curl_exec($tt_ch);
+    curl_close($tt_ch);
+}
+
+// ============================================================
 // FINALIZE & REDIRECT
 // ============================================================
 
@@ -117,5 +154,6 @@ unset($_SESSION['form_errors'], $_SESSION['form_old']);
 $_SESSION['reg_code']    = $save['reg_code'];
 $_SESSION['applicant']   = $result['data']['full_name'];
 $_SESSION['fb_event_id'] = $event_id; // Pass Event ID to the browser pixel for deduplication
+$_SESSION['tt_event_id'] = $event_id; // TikTok deduplication — same event_id
 
 redirect('/thank-you.php');
