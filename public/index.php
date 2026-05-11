@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Pull backend config
 $pixel_id       = get_setting('fb_pixel_id', '');
+$tt_pixel_id = get_setting('tiktok_pixel_id', '');
 $campaign_name  = get_setting('campaign_name', 'Grooming Lab Season 6');
 $is_active      = get_setting('campaign_active', '1') === '1';
 $contact_phone  = get_setting('contact_phone', '+8801926960164');
@@ -145,6 +146,31 @@ fbq('track', 'PageView');
 </script>
 <noscript><img height="1" width="1" style="display:none"
   src="https://www.facebook.com/tr?id=<?= $pixel_id ?>&ev=PageView&noscript=1"/></noscript>
+<?php endif; ?>
+
+<?php if (!empty($tt_pixel_id)): ?>
+<script>
+!function (w, d, t) {
+  w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
+  ttq.methods=["page","track","identify","instances","debug","on","off","once",
+               "ready","alias","group","enableCookie","disableCookie",
+               "holdConsent","revokeConsent","grantConsent"];
+  ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};
+  for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
+  ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)
+    ttq.setAndDefer(e,ttq.methods[n]);return e};
+  ttq.load=function(e,n){
+    var r="https://analytics.tiktok.com/i18n/pixel/events.js";
+    ttq._i=ttq._i||{};ttq._i[e]=[];ttq._i[e]._u=r;
+    ttq._t=ttq._t||{};ttq._t[e]=+new Date;
+    ttq._o=ttq._o||{};ttq._o[e]=n||{};
+    n=document.createElement("script");n.type="text/javascript";n.async=!0;
+    n.src=r+"?sdkid="+e+"&lib="+t;
+    e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};
+  ttq.load('<?= htmlspecialchars($tt_pixel_id, ENT_QUOTES) ?>');
+  ttq.page();
+}(window, document, 'ttq');
+</script>
 <?php endif; ?>
 
 <style>
@@ -1478,20 +1504,21 @@ button, input, select, textarea { font-family: inherit; }
 
           <?php if (!empty($form_errors) || $query_error === 'save_failed'): ?>
           <div class="form-alert form-alert-error">
-            <strong>কিছু সমস্যা হয়েছে। অনুগ্রহ করে ঠিক করুন:</strong>
+            <strong>Something went wrong:</strong>
             <ul>
               <?php foreach ($form_errors as $err): ?>
               <li><?= htmlspecialchars($err) ?></li>
               <?php endforeach; ?>
               <?php if ($query_error === 'save_failed'): ?>
-              <li>একটি সিস্টেম এরর হয়েছে। আবার চেষ্টা করুন।</li>
+              <li>Something went wrong while saving your data. Please try again.</li>
               <?php endif; ?>
             </ul>
           </div>
           <?php endif; ?>
           <?php if ($query_error === 'quota_full'): ?>
           <div class="form-alert" style="background:var(--primary-light);border:1px solid var(--primary);color:var(--primary-dark);">
-            দুঃখিত — সমস্ত আসন পূর্ণ হয়ে গেছে।
+            <strong>রেজিস্ট্রেশন বন্ধ</strong>
+            <p style="margin-top:8px;">দুঃখিত, আমাদের রেজিস্ট্রেশন কোটা পূর্ণ হয়ে গেছে। ভবিষ্যতে আরও প্রোগ্রাম আসবে, তাই আমাদের সাথে থাকুন!</p>
           </div>
           <?php endif; ?>
 
@@ -1500,75 +1527,75 @@ button, input, select, textarea { font-family: inherit; }
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="full_name">পূর্ণ নাম <span>*</span></label>
+                <label class="form-label" for="full_name">Full Name <span>*</span></label>
                 <input class="form-input" type="text" id="full_name" name="full_name"
-                       placeholder="আপনার পুরো নাম"
+                       placeholder="Your full name (English)"
                        value="<?= htmlspecialchars($form_old['full_name'] ?? '') ?>"
                        required minlength="3">
-                <div class="form-error-text" id="err_full_name">নাম অন্তত ৩ অক্ষরের হতে হবে।</div>
+                <div class="form-error-text" id="err_full_name">Name must be at least 3 characters long.</div>
               </div>
               <div class="form-group">
-                <label class="form-label" for="phone">মোবাইল নম্বর <span>*</span></label>
+                <label class="form-label" for="phone">Mobile Number <span>*</span></label>
                 <input class="form-input" type="tel" id="phone" name="phone"
                        placeholder="01XXXXXXXXX"
                        value="<?= htmlspecialchars($form_old['phone'] ?? '') ?>"
                        required>
-                <div class="form-hint">WhatsApp নম্বর দিন</div>
-                <div class="form-error-text" id="err_phone">সঠিক বাংলাদেশি নম্বর দিন।</div>
+                <div class="form-hint">Provide your WhatsApp number</div>
+                <div class="form-error-text" id="err_phone">Please enter a valid Bangladeshi mobile number.</div>
               </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="email">ইমেইল ঠিকানা</label>
+              <label class="form-label" for="email">Email Address</label>
               <input class="form-input" type="email" id="email" name="email"
-                     placeholder="আপনার ইমেইল (ঐচ্ছিক)"
+                     placeholder="Your email address (optional)"
                      value="<?= htmlspecialchars($form_old['email'] ?? '') ?>">
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="dob">জন্ম তারিখ <span>*</span></label>
+                <label class="form-label" for="dob">Date of Birth <span>*</span></label>
                 <input class="form-input" type="date" id="dob" name="dob"
                        value="<?= htmlspecialchars($form_old['dob'] ?? '') ?>"
                        required>
-                <div class="form-error-text" id="err_dob">বৈধ জন্ম তারিখ দিন।</div>
+                <div class="form-error-text" id="err_dob">Please enter a valid date of birth.</div>
               </div>
               <div class="form-group">
-                <label class="form-label" for="gender">লিঙ্গ <span>*</span></label>
+                <label class="form-label" for="gender">Gender <span>*</span></label>
                 <select class="form-select" id="gender" name="gender" required>
-                  <option value="" disabled <?= empty($form_old['gender']) ? 'selected' : '' ?>>বেছে নিন</option>
-                  <option value="female" <?= ($form_old['gender']??'')==='female'?'selected':'' ?>>মহিলা</option>
-                  <option value="male"   <?= ($form_old['gender']??'')==='male'  ?'selected':'' ?>>পুরুষ</option>
-                  <option value="other"  <?= ($form_old['gender']??'')==='other' ?'selected':'' ?>>অন্যান্য</option>
+                  <option value="" disabled <?= empty($form_old['gender']) ? 'selected' : '' ?>>Select</option>
+                  <option value="female" <?= ($form_old['gender']??'')==='female'?'selected':'' ?>>Female</option>
+                  <option value="male"   <?= ($form_old['gender']??'')==='male'  ?'selected':'' ?>>Male</option>
+                  <option value="other"  <?= ($form_old['gender']??'')==='other' ?'selected':'' ?>>Other</option>
                 </select>
-                <div class="form-error-text" id="err_gender">লিঙ্গ বেছে নিন।</div>
+                <div class="form-error-text" id="err_gender">Please select your gender.</div>
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="height_cm">উচ্চতা <span>*</span></label>
+                <label class="form-label" for="height_cm">Height <span>*</span></label>
                 <select class="form-select" id="height_cm" name="height_cm" required>
-                  <option value="" disabled <?= empty($form_old['height_cm']) ? 'selected' : '' ?>>উচ্চতা বেছে নিন</option>
+                  <option value="" disabled <?= empty($form_old['height_cm']) ? 'selected' : '' ?>>Select Height</option>
                   <?php
                   for ($feet = 4; $feet <= 6; $feet++) {
                       for ($inches = 0; $inches <= 11; $inches++) {
                           if ($feet == 4 && $inches < 5) continue;
                           if ($feet == 6 && $inches > 8) continue;
                           $cm = round(($feet * 30.48) + ($inches * 2.54));
-                          $label = "{$feet}' {$inches}\"  ({$cm} সেমি)";
+                          $label = "{$feet}' {$inches}\"  ({$cm} cm)";
                           $selected = (($form_old['height_cm']??'') == $cm) ? 'selected' : '';
                           echo "<option value=\"{$cm}\" {$selected}>{$label}</option>\n";
                       }
                   }
                   ?>
                 </select>
-                <div class="form-error-text" id="err_height">সঠিক উচ্চতা বেছে নিন।</div>
+                <div class="form-error-text" id="err_height">Please select a valid height.</div>
               </div>
               <div class="form-group">
-                <label class="form-label" for="weight_kg">ওজন (কেজি)</label>
+                <label class="form-label" for="weight_kg">Weight (kg)</label>
                 <input class="form-input" type="number" id="weight_kg" name="weight_kg"
-                       placeholder="যেমন: 55 (ঐচ্ছিক)"
+                       placeholder="e.g., 55 (optional)"
                        min="30" max="150"
                        value="<?= htmlspecialchars($form_old['weight_kg'] ?? '') ?>">
               </div>
@@ -1576,61 +1603,61 @@ button, input, select, textarea { font-family: inherit; }
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="address">বর্তমান ঠিকানা <span>*</span></label>
+                <label class="form-label" for="address">Current Address <span>*</span></label>
                 <input class="form-input" type="text" id="address" name="address"
-                      placeholder="যেমন: জেলা, উপজেলা, এবং বিস্তারিত..."
+                      placeholder="e.g., District, Upazila, and Details..."
                       value="<?= htmlspecialchars($form_old['address'] ?? '') ?>"
                       required>
-                <div class="form-error-text" id="err_address">আপনার সম্পূর্ণ ঠিকানা লিখুন।</div>
+                <div class="form-error-text" id="err_address">Please enter your complete address.</div>
               </div>
               <div class="form-group">
-                <label class="form-label" for="skin_tone">স্কিন টোন</label>
+                <label class="form-label" for="skin_tone">Skin Tone</label>
                 <select class="form-select" id="skin_tone" name="skin_tone">
-                  <option value="">বেছে নিন (ঐচ্ছিক)</option>
-                  <option value="fair"     <?= ($form_old['skin_tone']??'')==='fair'    ?'selected':'' ?>>ফর্সা</option>
-                  <option value="wheatish" <?= ($form_old['skin_tone']??'')==='wheatish'?'selected':'' ?>>গম-বর্ণ</option>
-                  <option value="dusky"    <?= ($form_old['skin_tone']??'')==='dusky'   ?'selected':'' ?>>শ্যামলা</option>
-                  <option value="dark"     <?= ($form_old['skin_tone']??'')==='dark'    ?'selected':'' ?>>কালো</option>
+                  <option value="">Select (Optional)</option>
+                  <option value="fair"     <?= ($form_old['skin_tone']??'')==='fair'    ?'selected':'' ?>>Fair</option>
+                  <option value="wheatish" <?= ($form_old['skin_tone']??'')==='wheatish'?'selected':'' ?>>Wheatish</option>
+                  <option value="dusky"    <?= ($form_old['skin_tone']??'')==='dusky'   ?'selected':'' ?>>Dusky</option>
+                  <option value="dark"     <?= ($form_old['skin_tone']??'')==='dark'    ?'selected':'' ?>>Dark</option>
                 </select>
               </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="experience">পূর্ব অভিজ্ঞতা</label>
+              <label class="form-label" for="experience">Previous Experience</label>
               <select class="form-select" id="experience" name="experience">
-                <option value="none"         <?= ($form_old['experience']??'none')==='none'        ?'selected':'' ?>>কোনো অভিজ্ঞতা নেই</option>
-                <option value="some"         <?= ($form_old['experience']??'')==='some'            ?'selected':'' ?>>কিছুটা অভিজ্ঞতা আছে</option>
-                <option value="professional" <?= ($form_old['experience']??'')==='professional'    ?'selected':'' ?>>পেশাদার অভিজ্ঞতা আছে</option>
+                <option value="none"         <?= ($form_old['experience']??'none')==='none'        ?'selected':'' ?>>No Experience</option>
+                <option value="some"         <?= ($form_old['experience']??'')==='some'            ?'selected':'' ?>>Some Experience</option>
+                <option value="professional" <?= ($form_old['experience']??'')==='professional'    ?'selected':'' ?>>Professional Experience</option>
               </select>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="fb_profile">ফেসবুক প্রোফাইল লিংক</label>
+                <label class="form-label" for="fb_profile">Facebook Profile Link</label>
                 <input class="form-input" type="url" id="fb_profile" name="fb_profile"
                        placeholder="facebook.com/yourname"
                        value="<?= htmlspecialchars($form_old['fb_profile'] ?? '') ?>">
               </div>
               <div class="form-group">
-                <label class="form-label" for="how_heard">কীভাবে জানলেন?</label>
+                <label class="form-label" for="how_heard">How did you hear about us?</label>
                 <select class="form-select" id="how_heard" name="how_heard">
-                  <option value="facebook"  <?= ($form_old['how_heard']??'facebook')==='facebook' ?'selected':'' ?>>ফেসবুক</option>
-                  <option value="instagram" <?= ($form_old['how_heard']??'')==='instagram'        ?'selected':'' ?>>ইনস্টাগ্রাম</option>
-                  <option value="friend"    <?= ($form_old['how_heard']??'')==='friend'           ?'selected':'' ?>>বন্ধু / পরিচিত</option>
-                  <option value="poster"    <?= ($form_old['how_heard']??'')==='poster'           ?'selected':'' ?>>পোস্টার / ব্যানার</option>
-                  <option value="other"     <?= ($form_old['how_heard']??'')==='other'            ?'selected':'' ?>>অন্যান্য</option>
+                  <option value="facebook"  <?= ($form_old['how_heard']??'facebook')==='facebook' ?'selected':'' ?>>Facebook</option>
+                  <option value="instagram" <?= ($form_old['how_heard']??'')==='instagram'        ?'selected':'' ?>>Instagram</option>
+                  <option value="friend"    <?= ($form_old['how_heard']??'')==='friend'           ?'selected':'' ?>>Friend / Acquaintance</option>
+                  <option value="poster"    <?= ($form_old['how_heard']??'')==='poster'           ?'selected':'' ?>>Poster / Banner</option>
+                  <option value="other"     <?= ($form_old['how_heard']??'')==='other'            ?'selected':'' ?>>Other</option>
                 </select>
               </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">আপনার ছবি আপলোড করুন</label>
+              <label class="form-label">Upload Your Photo</label>
               <div class="upload-zone" id="uploadZone">
                 <input type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/webp">
                 <div class="upload-icon">📸</div>
                 <div class="upload-text">
-                  <strong>ক্লিক করুন</strong> বা টেনে আনুন<br>
-                  JPG, PNG, WEBP — সর্বোচ্চ ৫ MB
+                  <strong>Click here</strong> or drag and drop<br>
+                  JPG, PNG, WEBP — up to 5 MB
                 </div>
                 <div class="upload-preview" id="uploadPreview">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1640,11 +1667,11 @@ button, input, select, textarea { font-family: inherit; }
             </div>
 
             <button type="submit" class="form-submit" id="submitBtn">
-              রেজিস্ট্রেশন সম্পন্ন করুন →
+              Submit →
             </button>
 
             <p style="text-align:center;font-size:0.85rem;color:var(--text-muted);margin-top:16px;">
-              আপনার তথ্য সম্পূর্ণ নিরাপদ এবং তৃতীয় পক্ষের সাথে শেয়ার করা হবে না।
+              Your information is completely secure and will not be shared with any third parties.
             </p>
           </form>
         </div>
@@ -1954,6 +1981,7 @@ if (regForm) {
     // Fire pixel ViewContent on submit attempt
     <?php if (!empty($pixel_id)): ?>
     if (typeof fbq !== 'undefined') fbq('track', 'InitiateCheckout', { content_name: 'DMA Registration' });
+    if (typeof ttq !== 'undefined') ttq.track('InitiateCheckout');
     <?php endif; ?>
     document.getElementById('submitBtn').disabled = true;
     document.getElementById('submitBtn').textContent = 'জমা দেওয়া হচ্ছে…';

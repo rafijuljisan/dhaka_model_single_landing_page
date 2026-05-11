@@ -258,17 +258,18 @@ $csrf = csrf_token();
               </div>
               <div class="form-group">
                 <label>TikTok Pixel ID</label>
-                <input type="text" name="tiktok_pixel_id"
-                      value="<?= htmlspecialchars($settings['tiktok_pixel_id']) ?>"
-                      placeholder="e.g. CXXXXXXXXXXXXXXXXX">
+                <input type="text" name="tiktok_pixel_id" class="form-control"
+                  value="<?= htmlspecialchars($settings['tiktok_pixel_id']) ?>"
+                  placeholder="e.g. CXXXXXXXXXXXXXXXXX"
+                  style="font-family:var(--mono,monospace);">
                 <small>Numeric/alphanumeric ID from TikTok Events Manager.</small>
               </div>
 
               <div class="form-group">
                 <label>TikTok Access Token</label>
-                <input type="password" name="tiktok_access_token"
-                      value="<?= htmlspecialchars($settings['tiktok_access_token']) ?>"
-                      placeholder="From TikTok Events Manager → Server Events">
+                <input type="password" name="tiktok_access_token" class="form-control"
+                  value="<?= htmlspecialchars($settings['tiktok_access_token']) ?>"
+                  placeholder="From TikTok Events Manager → Server Events">
                 <small>Keep this secret — used for server-side event tracking.</small>
               </div>
 
