@@ -350,7 +350,9 @@ $csrf = csrf_token();
     <!-- ── Lead Header ── -->
     <div class="lead-header">
       <?php if ($reg['photo_path']): ?>
-      <img src="<?= clean($reg['photo_path']) ?>" class="lead-photo" alt="<?= clean($reg['full_name']) ?>">
+      <img src="<?= clean($reg['photo_path']) ?>" class="lead-photo"
+        alt="<?= clean($reg['full_name']) ?>"
+        onclick="openPhotoModal(this.src)" title="Click to enlarge">
       <?php else: ?>
       <div class="lead-photo-placeholder">👤</div>
       <?php endif; ?>
@@ -696,6 +698,18 @@ $csrf = csrf_token();
   </form>
   <?php endif; ?>
 </div>
+<!-- Photo Modal -->
+<div id="photoModal" onclick="closePhotoModal()"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);
+            z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;">
+  <img id="photoModalImg" src="" alt="Full photo"
+       style="max-width:90vw;max-height:90vh;border-radius:12px;
+              box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+  <button onclick="closePhotoModal()"
+          style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.15);
+                 border:none;color:#fff;font-size:1.5rem;border-radius:50%;
+                 width:40px;height:40px;cursor:pointer;line-height:1;">✕</button>
+</div>
 
 <script>
 function openSidebar() {
@@ -714,6 +728,20 @@ function setActivityType(type, btn) {
   document.getElementById('followUpDateWrap').style.display =
     (type === 'follow_up') ? 'block' : 'none';
 }
+function openPhotoModal(src) {
+  document.getElementById('photoModalImg').src = src;
+  const m = document.getElementById('photoModal');
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';   // prevent background scroll
+}
+function closePhotoModal() {
+  document.getElementById('photoModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+// Also close on Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePhotoModal();
+});
 </script>
 </body>
 </html>

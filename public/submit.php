@@ -58,101 +58,63 @@ if (!empty($result['data']['email'])) {
 }
 
 // ============================================================
-// META CONVERSIONS API (SERVER-SIDE TRACKING)
+// COMBINED CAPI — Meta + TikTok via Cloudflare Worker
 // ============================================================
 
-// 1. Generate unique Event ID for deduplication
 $event_id = uniqid('lead_');
 
-// 2. Safely extract and hash user data
 $applicant_email = $result['data']['email'] ?? '';
-$applicant_phone = $result['data']['phone'] ?? ''; 
+$applicant_phone = $result['data']['phone'] ?? '';
 
-// Meta requires strictly formatted SHA256 hashes
-$hashed_email = !empty($applicant_email) ? hash('sha256', strtolower(trim($applicant_email))) : null;
-// Clean phone number (remove +, -, spaces, leading zeros) before hashing
+$hashed_email = !empty($applicant_email)
+    ? hash('sha256', strtolower(trim($applicant_email)))
+    : null;
+
 $clean_phone  = preg_replace('/[^0-9]/', '', $applicant_phone);
-$hashed_phone = !empty($clean_phone) ? hash('sha256', ltrim($clean_phone, '0')) : null;
+$hashed_phone = !empty($clean_phone)
+    ? hash('sha256', ltrim($clean_phone, '0'))
+    : null;
 
 $worker_payload = [
     'event_name' => 'Lead',
     'event_id'   => $event_id,
-    'user_data'  => array_filter([ // array_filter removes null values
-        'em'  => $hashed_email,
-        'ph'  => $hashed_phone,
-        'fbp' => $_COOKIE['_fbp'] ?? null, // Browser pixel cookie
-        'fbc' => $_COOKIE['_fbc'] ?? null, // Click ID cookie (highly valuable if they clicked an ad)
+    'test_event_code' => 'TEST28213',
+    'page_url'   => 'https://' . ($_SERVER['HTTP_HOST'] ?? '') . '/thank-you.php',
+    'user_data'  => array_filter([
+        'em'         => $hashed_email,
+        'ph'         => $hashed_phone,
+        'fbp'        => $_COOKIE['_fbp']           ?? null,
+        'fbc'        => $_COOKIE['_fbc']            ?? null,
+        'ttclid'     => $_COOKIE['ttclid']          ?? null, // TikTok click ID
+        'ip'         => $_SERVER['REMOTE_ADDR']     ?? null,
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
     ]),
     'custom_data' => [
-        'content_category' => 'ModelAgency',
-        'content_name'     => 'DMA Grooming Registration',
         'currency'         => 'BDT',
-        'value'            => 0
-    ]
+        'value'            => 0,
+        'content_name'     => 'DMA Grooming Registration',
+        'content_category' => 'ModelAgency',
+    ],
 ];
 
-// 3. Send to Cloudflare Worker (Fast / Non-blocking)
-$worker_url = 'https://dma-capi-proxy.admin-dhakamodelagency.workers.dev';
-
-$ch = curl_init($worker_url);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($worker_payload));
+$ch = curl_init('https://dma-capi-proxy.admin-dhakamodelagency.workers.dev');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST,  'POST');
+curl_setopt($ch, CURLOPT_POSTFIELDS,     json_encode($worker_payload));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1000); // 1 Second timeout - doesn't slow down the user's redirect
-
-// Execute and immediately close connection
-curl_exec($ch);
+curl_setopt($ch, CURLOPT_HTTPHEADER,    ['Content-Type: application/json']);
+curl_setopt($ch, CURLOPT_TIMEOUT_MS,     2000);
+$worker_response = curl_exec($ch);
+$curl_error      = curl_error($ch);        // ← add
+$http_code       = curl_getinfo($ch, CURLINFO_HTTP_CODE); // ← add
 curl_close($ch);
 
-// ============================================================
-// TIKTOK EVENTS API (SERVER-SIDE TRACKING)
-// ============================================================
-$tiktok_pixel_id     = get_setting('tiktok_pixel_id', '');
-$tiktok_access_token = get_setting('tiktok_access_token', '');
-
-if (!empty($tiktok_pixel_id) && !empty($tiktok_access_token)) {
-
-    $tt_payload = json_encode([
-        'pixel_code' => $tiktok_pixel_id,
-        'event'      => [                          // ← required wrapper array
-            [
-                'event_name'  => 'SubmitForm',
-                'event_id'    => $event_id,
-                'event_time'  => time(),           // ← Unix int, NOT date('c')
-                'user'        => array_filter([
-                    'phone_number' => !empty($clean_phone)
-                        ? hash('sha256', $clean_phone)
-                        : null,
-                    'email'        => !empty($applicant_email)
-                        ? hash('sha256', strtolower(trim($applicant_email)))
-                        : null,
-                    'ip'           => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'user_agent'   => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                ]),
-                'page'        => [
-                    'url' => 'https://' . ($_SERVER['HTTP_HOST'] ?? '') . '/thank-you.php',
-                ],
-                'properties'  => [
-                    'currency' => 'BDT',
-                    'value'    => 0,
-                ],
-            ]
-        ],
-    ]);
-
-    $tt_ch = curl_init('https://business-api.tiktok.com/open_api/v1.3/event/track/');
-    curl_setopt($tt_ch, CURLOPT_CUSTOMREQUEST,  'POST');
-    curl_setopt($tt_ch, CURLOPT_POSTFIELDS,     $tt_payload);
-    curl_setopt($tt_ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($tt_ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Access-Token: ' . $tiktok_access_token,
-    ]);
-    curl_setopt($tt_ch, CURLOPT_TIMEOUT_MS, 3000);
-    curl_exec($tt_ch);
-    curl_close($tt_ch);
+// Log silently — never blocks the redirect
+if ($curl_error) {
+    error_log('[CAPI Worker] cURL error: ' . $curl_error);
+} elseif ($http_code !== 200) {
+    error_log('[CAPI Worker] Non-200 response: ' . $http_code . ' | ' . $worker_response);
 }
+
 
 // ============================================================
 // FINALIZE & REDIRECT

@@ -6,6 +6,32 @@ require_once __DIR__ . '/../core/includes/functions.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
+// Generate a unique ID for this page view
+$page_view_id = uniqid('pv_');
+
+// Prepare the payload for Cloudflare
+$pv_payload = [
+    'event_name' => 'PageView',
+    'event_id'   => $page_view_id,
+    'test_event_code' => 'TEST28213',
+    'page_url'   => 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'],
+    'user_data'  => [
+        'ip' => $_SERVER['REMOTE_ADDR'],
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'],
+        'fbp' => $_COOKIE['_fbp'] ?? null,
+    ]
+];
+
+// Send to your Worker
+$ch = curl_init('https://dma-capi-proxy.admin-dhakamodelagency.workers.dev');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($pv_payload));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1000); // Fast timeout so it doesn't slow down page load
+curl_exec($ch);
+curl_close($ch);
+
 // Pull backend config
 $pixel_id       = get_setting('fb_pixel_id', '');
 $tt_pixel_id = get_setting('tiktok_pixel_id', '');
@@ -142,7 +168,7 @@ n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
 (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '<?= $pixel_id ?>');
-fbq('track', 'PageView');
+fbq('track', 'PageView', {}, { eventID: '<?= $page_view_id ?>' });
 </script>
 <noscript><img height="1" width="1" style="display:none"
   src="https://www.facebook.com/tr?id=<?= $pixel_id ?>&ev=PageView&noscript=1"/></noscript>
@@ -168,7 +194,7 @@ fbq('track', 'PageView');
     n.src=r+"?sdkid="+e+"&lib="+t;
     e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};
   ttq.load('<?= htmlspecialchars($tt_pixel_id, ENT_QUOTES) ?>');
-  ttq.page();
+  ttq.instance('<?= $tt_pixel_id ?>').page({ event_id: '<?= $page_view_id ?>' });
 }(window, document, 'ttq');
 </script>
 <?php endif; ?>

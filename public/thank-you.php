@@ -187,12 +187,11 @@ unset($_SESSION['reg_code'], $_SESSION['applicant'], $_SESSION['fb_event_id'], $
 
     // ★ LEAD EVENT — fires on thank-you page only
     fbq('track', 'Lead', {
-        content_name:     'DMA Grooming Registration',
-        content_category: 'ModelAgency',
-        value:            0,
-        currency:         'BDT'
+        content_name: 'DMA Grooming Registration',
+        value: 0,
+        currency: 'BDT'
     }, {
-        eventID: '<?= $fb_event_id ?>'  // ADD THIS LINE
+        eventID: '<?= $fb_event_id ?>' // <--- This matches the server's ID
     });
     </script>
     <noscript>
@@ -223,12 +222,7 @@ unset($_SESSION['reg_code'], $_SESSION['applicant'], $_SESSION['fb_event_id'], $
     ttq.page();
 
     // ★ SUBMITFORM EVENT — fires on thank-you page only
-    ttq.track('SubmitForm', {
-        value:    0,
-        currency: 'BDT'
-    }, {
-        event_id: '<?= $tt_event_id ?>'
-    });
+    ttq.track('SubmitForm', { value: 0, currency: 'BDT' }, { event_id: '<?= $tt_event_id ?>' });
     }(window, document, 'ttq');
     </script>
     <?php endif; ?>
