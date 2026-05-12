@@ -4,14 +4,15 @@
 // ============================================================
 
 if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.gc_maxlifetime', 86400);   // ← add this
     session_set_cookie_params([
-        'lifetime' => 0,
+        'lifetime' => 86400,                    // ← change from 0 to match
         'path'     => '/',
-        'secure'   => true,       // set false if testing on plain HTTP locally
+        'secure'   => true,
         'httponly' => true,
         'samesite' => 'Strict',
     ]);
-    session_start();
+    session_start();                            // must stay last
 }
 
 // ── Is the current session a valid admin session? ─────────────

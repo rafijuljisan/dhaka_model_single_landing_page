@@ -1770,3 +1770,34 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     justify-content: flex-end;
   }
 }
+/* ── Font Size Accessibility Patch ── */
+.sidebar-section-label,
+.filter-label               { font-size: 0.75rem; }
+
+.sidebar-logo-sub,
+.sidebar-user-role,
+.activity-followup-badge    { font-size: 0.78rem; }
+
+.nav-badge                  { font-size: 0.75rem; }
+
+.badge, .role-badge,
+.info-row > span,
+.info-section h4,
+.activity-time, .audit-time,
+.lead-card-date             { font-size: 0.8rem; }
+
+.priority-dot, .stat-label,
+.stat-sub, .activity-tab    { font-size: 0.82rem; }
+
+.data-table th              { font-size: 0.82rem; }
+
+.form-label, .td-code,
+.lead-card-sub              { font-size: 0.85rem; }
+
+.btn-sm, .table-meta,
+.activity-who, .audit-item,
+.quick-stat-pill,
+.activity-text,
+.topbar-breadcrumb          { font-size: 0.875rem; }
+
+.sidebar-card-header        { font-size: 0.9rem; }
