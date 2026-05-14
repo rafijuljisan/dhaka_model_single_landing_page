@@ -245,6 +245,12 @@ $csrf = csrf_token();
       <li><a href="/admin/dashboard.php?followup_date=<?= date('Y-m-d') ?>">
         <span class="nav-icon">⏰</span> Today's Follow-ups
       </a></li>
+      <li><a href="/admin/manual_entry.php">
+          <span class="nav-icon">✏️</span> Add Lead Manually
+      </a></li>
+      <li><a href="/admin/import.php">
+          <span class="nav-icon">📥</span> Import CSV
+      </a></li>
     </ul>
   </div>
 
@@ -287,6 +293,8 @@ $csrf = csrf_token();
     </div>
     <div class="topbar-actions">
       <a href="/admin/export.php<?= qs() ?>" class="btn btn-outline btn-sm">⬇ Export</a>
+      <a href="/admin/manual_entry.php" class="btn btn-primary btn-sm">✏️ Add Lead</a>
+      <a href="/admin/import.php" class="btn btn-outline btn-sm">📥 Import</a>
       <?php if ($admin['role'] !== 'viewer'): ?>
       <a href="/admin/settings.php" class="btn btn-ghost btn-sm">⚙</a>
       <?php endif; ?>

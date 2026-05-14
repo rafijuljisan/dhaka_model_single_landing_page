@@ -1,0 +1,3 @@
+full_name,phone,email,dob,gender,height_cm,weight_kg,skin_tone,district,address,experience,fb_profile,how_heard,status,priority
+Fatema Begum,01712345678,fatema@example.com,2000-05-14,female,165,52,fair,Dhaka,"Mirpur, Dhaka",none,https://facebook.com/fatema,facebook,pending,normal
+Karim Hossain,01812345679,,1998-03-22,male,172,68,wheatish,Chattogram,"GEC, Chattogram",some,,friend,pending,warm

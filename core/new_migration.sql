@@ -83,3 +83,8 @@ SELECT CONCAT(
   'New columns: assigned_to, priority. ',
   'New table: lead_activities.'
 ) AS result;
+
+ALTER TABLE `registrations`
+  ADD COLUMN IF NOT EXISTS `entry_source`
+  ENUM('public_form','manual','csv_import') NOT NULL DEFAULT 'public_form'
+  AFTER `how_heard`;
